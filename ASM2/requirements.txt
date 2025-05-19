@@ -1,6 +1,7 @@
-sentence-transformers==2.7.0
-numpy==1.26.4
-pandas==2.2.2
-torch==2.3.0
+sentence-transformers==2.7.0 
+transformers==4.38.2 
+numpy==1.26.4 
+torch==2.3.0 
+faiss-gpu==1.8.0 
+tqdm==4.66.4 
 scikit-learn==1.5.0
-faiss-cpu==1.8.0

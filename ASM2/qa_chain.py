@@ -2,7 +2,6 @@ import json
 import numpy as np
 import torch
 import os
-import faiss
 from sentence_transformers import SentenceTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from vector_store import VectorStoreLocal
@@ -15,9 +14,9 @@ class QAChain:
                  data_dir='output',
                  device=None,
                  max_new_tokens=150,
-                 k=3):
+                 k=5):
         """
-        Khởi tạo QA Chain cho RAG trên local.
+        Khởi tạo QA Chain cho RAG trên local, không dùng FAISS.
         Args:
             embedding_model_name (str): Tên hoặc đường dẫn embedding model.
             llm_model_name (str): Tên hoặc đường dẫn LLM.
@@ -44,38 +43,36 @@ class QAChain:
         if not os.path.exists(self.data_dir):
             raise FileNotFoundError(f"Data directory {self.data_dir} does not exist.")
     
-    def load_vector_store(self):
-        """Tải vector store từ FAISS index."""
+    def load_vector_store(self, offline_embedding_path=None):
+        """Tải vector store từ JSON hoặc NumPy (không dùng FAISS)."""
         try:
             self.vector_store = VectorStoreLocal(
                 model_name=self.embedding_model_name,
                 data_dir=self.data_dir,
                 output_dir=self.data_dir,
-                device=self.device,
-                index_type='hnsw'
+                device=self.device
             )
-            # Tải index có sẵn
-            index_path = os.path.join(self.data_dir, 'vector_store.bin')
-            chunks_path = os.path.join(self.data_dir, 'vector_store_chunks.json')
-            if not os.path.exists(index_path) or not os.path.exists(chunks_path):
-                raise FileNotFoundError("Vector store files not found. Run main.py first.")
+            # Tải embeddings và chunks
+            json_path = os.path.join(self.data_dir, 'vector_store.json')
+            npy_path = os.path.join(self.data_dir, 'vector_store.npy')
+            if not os.path.exists(json_path) and not os.path.exists(npy_path):
+                raise FileNotFoundError("Vector store files (vector_store.json or vector_store.npy) not found. Run vector store generation first.")
             
-            self.vector_store.index = faiss.read_index(index_path)
-            with open(chunks_path, 'r', encoding='utf-8') as f:
-                self.vector_store.chunks = json.load(f)
-            self.vector_store.load_model()
-            print(f"Loaded vector store with {self.vector_store.index.ntotal} vectors")
+            self.vector_store.load_embeddings(json_path=json_path, npy_path=npy_path)
+            print(f"Loaded vector store with {len(self.vector_store.embeddings)} vectors")
         except Exception as e:
             print(f"Error loading vector store: {e}")
             raise
     
-    def load_llm(self):
+    def load_llm(self, offline_llm_path=None):
         """Tải LLM và tokenizer."""
         try:
             print(f"Loading LLM: {self.llm_model_name}")
-            self.tokenizer = AutoTokenizer.from_pretrained(self.llm_model_name)
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                offline_llm_path if offline_llm_path else self.llm_model_name
+            )
             self.llm = AutoModelForCausalLM.from_pretrained(
-                self.llm_model_name,
+                offline_llm_path if offline_llm_path else self.llm_model_name,
                 torch_dtype=torch.float16 if self.device == 'cuda' else torch.float32,
                 device_map='auto'
             )
@@ -102,9 +99,9 @@ class QAChain:
         if self.llm is None or self.tokenizer is None:
             self.load_llm()
         
-        # Tạo prompt
+        # Tạo prompt cải tiến
         context = "\n".join([f"- {chunk['content']}" for chunk in chunks])
-        prompt = f"""Dựa trên thông tin sau, trả lời câu hỏi một cách ngắn gọn và chính xác bằng tiếng Việt:
+        prompt = f"""Dựa trên thông tin sau, trả lời câu hỏi bằng tiếng Việt, ngắn gọn, chính xác và giữ nguyên thông tin gốc nếu có:
 
 **Thông tin:**
 {context}
@@ -141,7 +138,7 @@ class QAChain:
         
         print(f"Top {self.k} chunks:")
         for chunk in chunks:
-            print(f"- {chunk['content'][:100]}... (distance: {chunk['distance']:.4f})")
+            print(f"- {chunk['content'][:100]}... (similarity: {chunk['similarity']:.4f})")
             print(f"  Metadata: {chunk['metadata']}")
         
         answer = self.generate_answer(query, chunks)
@@ -153,11 +150,10 @@ class QAChain:
         for query in queries:
             self.answer_query(query)
     
-    def run(self, queries=None):
+    def run(self, queries=None, offline_embedding_path=None, offline_llm_path=None):
         """Chạy QA chain."""
         self.check_environment()
-        self.load_vector_store()
-        
+        self.load_vector_store(offline_embedding_path=offline_embedding_path)
         if queries:
             print("Testing QA chain with queries...")
             self.test_qa(queries)
@@ -169,7 +165,7 @@ if __name__ == "__main__":
         llm_model_name='google/gemma-2b',  # Hoặc 'models/gemma-2b'
         data_dir='output',
         max_new_tokens=150,
-        k=3
+        k=5
     )
     
     # Các câu hỏi thử nghiệm
@@ -181,4 +177,8 @@ if __name__ == "__main__":
     ]
     
     # Chạy QA chain
-    qa_chain.run(queries=test_queries)
+    qa_chain.run(
+        queries=test_queries,
+        offline_embedding_path='models/multilingual-e5-large',  # Thay bằng đường dẫn local nếu có
+        offline_llm_path='models/gemma-2b'  # Thay bằng đường dẫn local nếu có
+    )
