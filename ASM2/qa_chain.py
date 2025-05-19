@@ -161,13 +161,13 @@ class QAChain:
 if __name__ == "__main__":
     # Cấu hình QA chain
     qa_chain = QAChain(
-        embedding_model_name='intfloat/multilingual-e5-large',  # Hoặc 'models/multilingual-e5-large'
-        llm_model_name='google/gemma-2b',  # Hoặc 'models/gemma-2b'
+        embedding_model_name='intfloat/multilingual-e5-large',
+        llm_model_name='mistralai/Mistral-7B-v0.1',  
         data_dir='output',
         max_new_tokens=150,
         k=5
     )
-    
+        
     # Các câu hỏi thử nghiệm
     test_queries = [
         "Mã trường của Trường Đại học Giáo dục là gì?",
