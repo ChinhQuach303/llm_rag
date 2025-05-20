@@ -27,8 +27,8 @@ def check_embeddings(embeddings, contents, num_samples=5):
             print(f"- {contents[k][:100]}... (similarity: {similarities[k]:.4f})")
 
 # Đọc chunks
-output_chunks = load_chunks('data/chunks_output_text.json')
-data_chunks = load_chunks('data/chunks_data.json')
+output_chunks = load_chunks('data/json/chunks_output_text.json')
+data_chunks = load_chunks('data/json/chunks_data.json')
 all_chunks = output_chunks + data_chunks
 all_contents = [chunk['content'] for chunk in all_chunks]
 
@@ -53,9 +53,4 @@ embedding_data = [
     for chunk, embedding in zip(all_chunks, embeddings)
 ]
 
-# Lưu kết quả
-save_embeddings(embedding_data, 'data/embeddings.json')
-np.save('data/embeddings.npy', embeddings)
-
-# Kiểm tra chất lượng
-check_embeddings(embeddings, all_contents)
+save_embeddings(embedding_data, 'output/embeddings.json')
