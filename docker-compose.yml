@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # ---------------------------------------------
+  # Dịch vụ Core FastAPI Backend của chúng ta
+  # ---------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag_backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.example
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - qdrant
+      - redis
+    networks:
+      - rag_net
+
+  # ---------------------------------------------
+  # Background Worker (Celery)
+  # ---------------------------------------------
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag_celery_worker
+    command: [ "celery", "-A", "core.worker.celery_app", "worker", "--loglevel=info" ]
+    env_file:
+      - .env.example
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - backend
+      - redis
+    networks:
+      - rag_net
+
+  # ---------------------------------------------
+  # Cache & Message Broker
+  # ---------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: rag_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - rag_net
+
+  # ---------------------------------------------
+  # Vector Database chuyên dụng
+  # ---------------------------------------------
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: rag_qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    networks:
+      - rag_net
+  # ---------------------------------------------
+  # V3: Database (PostgreSQL)
+  # ---------------------------------------------
+  pg_db:
+    image: postgres:15-alpine
+    container_name: rag_postgres
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=rag_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_storage:/var/lib/postgresql/data
+    networks:
+      - rag_net
+
+  # ---------------------------------------------
+  # V3: S3/MinIO Object Storage
+  # ---------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: rag_minio
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin123
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_storage:/data
+    networks:
+      - rag_net
+
+volumes:
+  qdrant_storage:
+  pg_storage:
+  minio_storage:
+
+
+networks:
+  rag_net:
+    driver: bridge
