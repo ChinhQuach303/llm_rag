@@ -126,8 +126,7 @@ class RetrieverService:
                         should=[
                             models.FieldCondition(key="chunk_index", match=models.MatchValue(value=c_idx - 1)),
                             models.FieldCondition(key="chunk_index", match=models.MatchValue(value=c_idx + 1))
-                        ],
-                        min_should=1
+                        ]
                     )
                     adj_records, _ = self.qdrant.client.scroll(
                         collection_name=self.qdrant.collection_name,

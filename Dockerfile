@@ -8,7 +8,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Chỉ cần thư viện hệ thống cơ bản cho xử lý ảnh (pdf2image cần poppler-utils)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     poppler-utils \
-    libgl1-mesa-glx \
+    libgl1 \
+    libglib2.0-0 \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 

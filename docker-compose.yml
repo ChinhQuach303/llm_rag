@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # ---------------------------------------------
@@ -12,7 +12,7 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env.example
+      - .env
     volumes:
       - ./data:/app/data
     depends_on:
@@ -29,9 +29,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: rag_celery_worker
-    command: [ "celery", "-A", "core.worker.celery_app", "worker", "--loglevel=info" ]
+    command:
+      ["celery", "-A", "core.worker.celery_app", "worker", "--loglevel=info"]
     env_file:
-      - .env.example
+      - .env
     volumes:
       - ./data:/app/data
     depends_on:
@@ -75,7 +76,7 @@ services:
       - POSTGRES_PASSWORD=admin
       - POSTGRES_DB=rag_db
     ports:
-      - "5432:5432"
+      - "5434:5432"
     volumes:
       - pg_storage:/var/lib/postgresql/data
     networks:
@@ -103,7 +104,6 @@ volumes:
   qdrant_storage:
   pg_storage:
   minio_storage:
-
 
 networks:
   rag_net:

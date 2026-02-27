@@ -53,8 +53,8 @@ def process_document_task(self, object_name: str, original_filename: str, tenant
     qdrant = VectorStoreService()
     storage = MinioStorageService()
     
-    os.makedirs("/app/data/worker_tmp", exist_ok=True)
-    local_path = f"/app/data/worker_tmp/{uuid.uuid4()}_{original_filename}"
+    os.makedirs("data/worker_tmp", exist_ok=True)
+    local_path = f"data/worker_tmp/{uuid.uuid4()}_{original_filename}"
 
     try:
         # Download from MinIO
